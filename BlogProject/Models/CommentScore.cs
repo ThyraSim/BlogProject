@@ -2,7 +2,7 @@
 {
     public class CommentScore
     {
-        public int UserId { get; set; }
+        public string UserId { get; set; }
         public int CommentId { get; set; }
         public int Vote { get; set; }
     }

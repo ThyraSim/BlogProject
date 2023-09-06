@@ -45,7 +45,7 @@ namespace BlogProject.Controllers
                 var newComment = new Comment
                 {
                     PostId = postId,
-                    UserId = 1,
+                    UserId = "1",
                     Body = comment,
                     Score = 0,
                     CreatedAt = DateTime.Now,

@@ -45,8 +45,8 @@ namespace BlogProject.Controllers
             if (ModelState.IsValid)
             {
                 var idParam = new SqlParameter("@Id", user.Id);
-                var usernameParam = new SqlParameter("@Username", user.Username);
-                var passwordParam = new SqlParameter("@Password", user.Pwd);
+                var usernameParam = new SqlParameter("@Username", user.UserName);
+                var passwordParam = new SqlParameter("@Password", user.PasswordHash);
 
                 await _dbContext.Database.ExecuteSqlRawAsync("EXEC CreateUser @Username, @Password", usernameParam, passwordParam);
 

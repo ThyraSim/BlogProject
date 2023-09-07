@@ -6,6 +6,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using BlogProject.Models;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace BlogProject.Controllers
 {
@@ -13,25 +16,29 @@ namespace BlogProject.Controllers
     {
         private readonly BlogDbContext _dbContext;
         private readonly IDbConnection _connection;
+        private object _userManager;
 
-        public PostController(BlogDbContext dbContext, IDbConnection connection)
+        public PostController(BlogDbContext dbContext, IDbConnection connection, 
+            UserManager<IdentityUser> userManager)
         {
             _connection = connection;
             _dbContext = dbContext;
+            _userManager = userManager;
         }
 
         // GET: PostController
         public async Task<IActionResult> Index()
         {
-            var posts = await _dbContext.Posts.FromSqlRaw("EXECUTE dbo.GetAllPosts").ToListAsync();
+            var posts = await _dbContext.Posts.FromSqlRaw("EXEC GetAllPosts").ToListAsync();
+            var postIds = posts.Select(p => p.Id).ToList();
 
-            var userIds = posts.Select(p => p.UserId).Distinct().ToList();
-
-            var users = await _dbContext.Users.Where(u => userIds.Contains(u.Id)).ToListAsync();
+            var comments = await _dbContext.Comments
+                     .Where(c => postIds.Contains(c.PostId))
+                     .ToListAsync();
 
             foreach (var post in posts)
             {
-                post.User = users.FirstOrDefault(u => u.Id == post.UserId);
+                post.Comments = comments.Where(c => c.PostId == post.Id).ToList();
             }
 
             return View(posts);
@@ -80,7 +87,7 @@ namespace BlogProject.Controllers
 
 
         // GET: PostController/Create
-        public ActionResult Create()
+        public ActionResult CreatePost()
         {
             return View();
         }
@@ -88,16 +95,35 @@ namespace BlogProject.Controllers
         // POST: PostController/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
+        public async Task<IActionResult> CreatePost(IFormCollection collection)
         {
-            try
+            ClaimsPrincipal currentUser = this.User;
+            string currentUserID = currentUser.FindFirst(ClaimTypes.NameIdentifier).Value;
+
+            if (currentUserID is null)
             {
-                return RedirectToAction(nameof(Index));
+                throw new ArgumentNullException("Vous devez etre connecté pour poster");
             }
-            catch
+            string Titre = collection["Titre"];
+            string Body = collection["Body"];
+
+            if (Titre is null || Body is null)
             {
-                return View();
+                throw new ArgumentNullException("Tous les champs sont obligatoires");
             }
+            
+            // Use Entity Framework to insert data
+            var post = new Post
+            {
+                UserId = currentUserID,
+                Titre = Titre,
+                Body = Body
+            };
+
+            _dbContext.Posts.Add(post);
+            await _dbContext.SaveChangesAsync();
+
+            return RedirectToAction("Index");
         }
 
         // GET: PostController/Edit/5

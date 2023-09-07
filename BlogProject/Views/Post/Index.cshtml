@@ -4,10 +4,10 @@
     ViewData["Title"] = "Index";
 }
 
-<h1>Index</h1>
+<h1>All Posts</h1>
 
 <p>
-    <a asp-action="Create" class="btn btn-primary">Create New</a>
+    <a asp-action="CreatePost" class="btn btn-primary">Create New</a>
 </p>
 
 @foreach (var item in Model)
@@ -48,6 +48,21 @@
                     </div>
                 </div>
             </form>
+        </div>
+        <div>
+            
+            @if (item.Comments != null && item.Comments.Count > 0)
+            {
+                <h5>Top Comment:</h5>
+                var topComment = item.Comments.OrderByDescending(c => c.Score).FirstOrDefault(); // Assuming you have a Score property on Comment
+                <div class="mb-2">
+                    <strong>@Html.DisplayFor(modelItem => topComment.UserId)</strong>: @Html.DisplayFor(modelItem => topComment.Body)
+                </div>
+            }
+            else
+            {
+                <div>No comments yet.</div>
+            }
         </div>
     </div>
 }

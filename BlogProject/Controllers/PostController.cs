@@ -200,12 +200,16 @@ namespace BlogProject.Controllers
         public async Task<IActionResult> CreatePost(IFormCollection collection)
         {
             ClaimsPrincipal currentUser = this.User;
-            string currentUserID = currentUser.FindFirst(ClaimTypes.NameIdentifier).Value;
-
-            if (currentUserID is null)
+            string currentUserID;
+            if (currentUser == null || !currentUser.Identity.IsAuthenticated)
             {
-                throw new ArgumentNullException("Vous devez etre connecté pour poster");
+                return Challenge();
+            } else
+            {
+                currentUserID = currentUser.FindFirst(ClaimTypes.NameIdentifier).Value;
             }
+
+
             string Titre = collection["Titre"];
             string Body = collection["Body"];
 

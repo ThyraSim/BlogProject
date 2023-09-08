@@ -13,7 +13,6 @@ namespace BlogProject.Context
         }
 
         public DbSet<Post> Posts { get; set; }
-        public DbSet<User> Users { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<PostScore> PostScores { get; set; }
         public DbSet<CommentScore> CommentScores { get; set; }

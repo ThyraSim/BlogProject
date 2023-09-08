@@ -1,10 +1,11 @@
 ﻿@{
-    var post = ViewBag.Post as BlogProject.Models.Post;
+    var postView = ViewBag.PostView as BlogProject.ViewModel.PostViewModel;
+    var post = postView.Post;
     var comments = ViewBag.Comments as List<BlogProject.Models.Comment>;
 }
 
 <div class="card">
-    <!-- Post Details -->
+
     <div class="card-header d-flex justify-content-between">
         <span>@Html.DisplayFor(modelItem => post.User.UserName)</span>
         <span>@post.CreatedAt.ToString("MM/dd/yyyy")</span>
@@ -15,13 +16,13 @@
     </div>
     <div class="card-footer d-flex justify-content-between">
         <div class="btn-group w-50">
-            <button class="btn btn-light" onclick="increaseScore(@post.Id)">
+            <button id="up-arrow-@post.Id" class="btn btn-light @(postView.CurrentUserVote == 1 ? "selected" : "")" onclick="increaseScore(@post.Id)">
                 <i class="fas fa-arrow-up"></i>
             </button>
             <span id="score-@post.Id" class="btn btn-light disabled">
                 @Html.DisplayFor(modelItem => post.Score)
             </span>
-            <button class="btn btn-light" onclick="decreaseScore(@post.Id)">
+            <button id="down-arrow-@post.Id" class="btn btn-light @(postView.CurrentUserVote == -1 ? "selected" : "")" onclick="decreaseScore(@post.Id)">
                 <i class="fas fa-arrow-down"></i>
             </button>
         </div>
@@ -35,23 +36,27 @@
         {
             <div class="comment mb-2 d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="comment-date text-muted">
-                        @comment.CreatedAt.ToString("MM/dd/yyyy")
+                    <div class="d-flex justify-content-between w-100">
+                        <span>@Html.DisplayFor(modelItem => comment.User.UserName)</span>
+                        <span class="comment-date text-muted">
+                            @comment.CreatedAt.ToString("MM/dd/yyyy")
+                        </span>
                     </div>
                     <div class="comment-body">
                         @comment.Body
                     </div>
                 </div>
 
+
                 <!-- Score and Arrows -->
                 <div class="btn-group">
-                    <button class="btn btn-light" onclick="increaseScoreComm(@comment.Id)">
+                    <button id="comment-up-arrow-@comment.Id" class="btn btn-light" onclick="increaseScoreComm(@comment.Id)">
                         <i class="fas fa-arrow-up"></i>
                     </button>
-                    <span id="score-@comment.Id" class="btn btn-light disabled">
+                    <span id="comment-score-@comment.Id" class="btn btn-light disabled">
                         @Html.DisplayFor(modelItem => comment.Score)
                     </span>
-                    <button class="btn btn-light" onclick="decreaseScoreComm(@comment.Id)">
+                    <button id="comment-down-arrow-@comment.Id" class="btn btn-light" onclick="decreaseScoreComm(@comment.Id)">
                         <i class="fas fa-arrow-down"></i>
                     </button>
                 </div>
@@ -85,8 +90,20 @@
             },
             success: function (response) {
                 $('#score-' + postId).text(response.newScore);
+                adjustArrowState(postId, response.newVote, change);
             }
         });
+    }
+
+    function adjustArrowState(postId, newVote, change) {
+        $('#up-arrow-' + postId).removeClass('selected');
+        $('#down-arrow-' + postId).removeClass('selected');
+
+        if (newVote == 1) {
+            $('#up-arrow-' + postId).addClass('selected');
+        } else if (newVote == -1) {
+            $('#down-arrow-' + postId).addClass('selected');
+        }
     }
 
     function increaseScore(postId) {
@@ -97,7 +114,8 @@
         updateScore(postId, -1);
     }
 
-    function updateScoreComm(commentId, change){
+
+    function updateCommentScore(commentId, change) {
         $.ajax({
             url: '/Comment/UpdateScore',
             type: 'POST',
@@ -106,17 +124,36 @@
                 'change': change
             },
             success: function (response) {
-                $('#score-' + commentId).text(response.newScore);
+                $('#comment-score-' + commentId).text(response.newScore);
+                adjustCommentArrowState(commentId, response.newVote, change);
             }
         })
     }
 
+    function adjustCommentArrowState(commentId, newVote, change) {
+        $('#comment-up-arrow-' + commentId).removeClass('selected');
+        $('#comment-down-arrow-' + commentId).removeClass('selected');
+
+        if (newVote == 1) {
+            $('#comment-up-arrow-' + commentId).addClass('selected');
+        } else if (newVote == -1) {
+            $('#comment-down-arrow-' + commentId).addClass('selected');
+        }
+    }
+
     function increaseScoreComm(commentId) {
-        updateScoreComm(commentId, 1);
+        updateCommentScore(commentId, 1);
     }
 
     function decreaseScoreComm(commentId) {
-        updateScoreComm(commentId, -1);
+        updateCommentScore(commentId, -1);
     }
 
 </script>
+
+<style>
+    .selected {
+        background-color: #007BFF;
+        color: white;
+    }
+</style>

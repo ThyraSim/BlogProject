@@ -9,6 +9,7 @@ using Microsoft.Data.SqlClient;
 using BlogProject.Models;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
+using BlogProject.ViewModel;
 
 namespace BlogProject.Controllers
 {
@@ -16,7 +17,8 @@ namespace BlogProject.Controllers
     {
         private readonly BlogDbContext _dbContext;
         private readonly IDbConnection _connection;
-        private object _userManager;
+        private readonly UserManager<IdentityUser> _userManager;
+
 
         public PostController(BlogDbContext dbContext, IDbConnection connection, 
             UserManager<IdentityUser> userManager)
@@ -32,6 +34,11 @@ namespace BlogProject.Controllers
             var posts = await _dbContext.Posts.FromSqlRaw("EXEC GetAllPosts").ToListAsync();
             var postIds = posts.Select(p => p.Id).ToList();
 
+            var users = _userManager.Users.ToList();
+            var usersDictionary = users.ToDictionary(u => u.Id, u => u);
+
+            string currentUserId = _userManager.GetUserId(User);
+
             var comments = await _dbContext.Comments
                      .Where(c => postIds.Contains(c.PostId))
                      .ToListAsync();
@@ -39,52 +46,147 @@ namespace BlogProject.Controllers
             foreach (var post in posts)
             {
                 post.Comments = comments.Where(c => c.PostId == post.Id).ToList();
+
+                if (usersDictionary.TryGetValue(post.UserId, out var identityUser))
+                {
+                    post.User = ConvertToAppUser(identityUser);
+                }
+
+                foreach (var comment in post.Comments)
+                {
+                    if (usersDictionary.TryGetValue(comment.UserId, out var identityUser1))
+                    {
+                        comment.User = ConvertToAppUser(identityUser1);
+                    }
+                }
             }
 
-            return View(posts);
+            var postViewModels = posts.Select(p => new PostViewModel
+            {
+                Post = p,
+                CurrentUserVote = _dbContext.PostScores.FirstOrDefault(ps => ps.PostId == p.Id && ps.UserId == currentUserId)?.Vote ?? 0
+            }).ToList();
+
+            return View(postViewModels);
         }
 
+        public User ConvertToAppUser(IdentityUser identityUser)
+        {
+            return new User
+            {
+                Id = identityUser.Id,
+                UserName = identityUser.UserName,
+            };
+        }
 
         // GET: PostController/Details/5
         public async Task<IActionResult> PostDetails(int id)
         {
             var posts = await _dbContext.Posts.FromSqlRaw("EXECUTE dbo.GetPostById @Id", new SqlParameter("Id", id)).ToListAsync();
             var post = posts.FirstOrDefault();
+
+            var users = _userManager.Users.ToList();
+            var usersDictionary = users.ToDictionary(u => u.Id, u => u);
+
             var comments = await _dbContext.Comments.FromSqlRaw("EXECUTE dbo.GetCommentsByPost @PostId", new SqlParameter("PostId", id)).ToListAsync();
 
-            var userIds = posts.Select(p => p.UserId).Distinct().ToList();
+            // If we don't find a matching post, return an error.
+            if (post == null)
+            {
+                return NotFound($"No post found with ID {id}");
+            }
 
-            var users = await _dbContext.Users.Where(u => userIds.Contains(u.Id)).ToListAsync();
+            string currentUserId = _userManager.GetUserId(User);
+            var postViewModel = new PostViewModel
+            {
+                Post = post,
+                CurrentUserVote = _dbContext.PostScores.FirstOrDefault(ps => ps.PostId == post.Id && ps.UserId == currentUserId)?.Vote ?? 0
+            };
 
-            post.User = users.FirstOrDefault(u => u.Id == post.UserId);
+            if (usersDictionary.TryGetValue(post.UserId, out var identityUser))
+            {
+                post.User = ConvertToAppUser(identityUser);
+            }
 
-            ViewBag.Post = post;
+            foreach (var comment in post.Comments)
+            {
+                if (usersDictionary.TryGetValue(comment.UserId, out var identityUser1))
+                {
+                    comment.User = ConvertToAppUser(identityUser1);
+                }
+            }
+
+            ViewBag.PostView = postViewModel;
             ViewBag.Comments = comments;
 
             return View();
         }
 
+
         public async Task<IActionResult> UpdateScore(int postId, int change)
         {
-            // Stored Procedure to call
-            string storedProcName = change > 0 ? "IncrementPostScore" : "DecrementPostScore";
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Unauthorized();
+            }
 
-            // Create and configure a SQL parameter
-            var postIdParam = new SqlParameter("@PostId", postId);
+            string userId = _userManager.GetUserId(User);
 
-            // Execute the stored procedure
-            await _dbContext.Database.ExecuteSqlRawAsync($"EXEC {storedProcName} @PostId", postIdParam);
+            var existingScore = await _dbContext.PostScores
+                                .FirstOrDefaultAsync(ps => ps.UserId == userId && ps.PostId == postId);
+            int newVote;
 
-            // Retrieve the updated score from the database to send back to the client
+            if (existingScore == null)
+            {
+                newVote = change;
+                // User hasn't voted yet; add their vote.
+                await ExecuteVoteChange(change, postId);
+                _dbContext.PostScores.Add(new PostScore
+                {
+                    UserId = userId,
+                    PostId = postId,
+                    Vote = change
+                });
+            }
+            else if (existingScore.Vote != change)
+            {
+                // User wants to change their vote.
+                await ExecuteVoteChange(-existingScore.Vote, postId);  // Undo previous vote
+                await ExecuteVoteChange(change, postId);  // Apply new vote
+                existingScore.Vote = change;
+                newVote = change;
+            }
+            else
+            {
+                // User wants to retract their vote.
+                await ExecuteVoteChange(-change, postId);  // Undo previous vote
+                _dbContext.PostScores.Remove(existingScore);
+                newVote = 0;
+            }
+
+            await _dbContext.SaveChangesAsync();
+
             var updatedPost = await _dbContext.Posts.FindAsync(postId);
             if (updatedPost == null)
             {
                 return NotFound();
             }
 
-            return Json(new { newScore = updatedPost.Score });
+            return Json(new { newScore = updatedPost.Score, newVote });
         }
 
+        private async Task ExecuteVoteChange(int change, int postId)
+        {
+            string storedProcName = change > 0 ? "IncrementPostScore" : "DecrementPostScore";
+            await ExecuteStoredProcedure(storedProcName, postId);
+        }
+
+
+        private async Task ExecuteStoredProcedure(string procName, int postId)
+        {
+            var sqlParam = new SqlParameter("@PostId", postId);
+            await _dbContext.Database.ExecuteSqlRawAsync($"EXEC {procName} @PostId", sqlParam);
+        }
 
         // GET: PostController/Create
         public ActionResult CreatePost()

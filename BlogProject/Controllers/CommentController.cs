@@ -1,19 +1,26 @@
 ﻿using BlogProject.Context;
 using BlogProject.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace BlogProject.Controllers
 {
     public class CommentController : Controller
     {
-        private readonly BlogDbContext _dbContext; // replace YourDbContext with the actual name of your DbContext class
+        private readonly BlogDbContext _dbContext;
+        private readonly IDbConnection _connection;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public CommentController(BlogDbContext dbContext)
+        public CommentController(BlogDbContext dbContext, IDbConnection connection,
+            UserManager<IdentityUser> userManager)
         {
+            _connection = connection;
             _dbContext = dbContext;
+            _userManager = userManager;
         }
 
         // GET: CommentController
@@ -45,12 +52,11 @@ namespace BlogProject.Controllers
                 var newComment = new Comment
                 {
                     PostId = postId,
-                    UserId = "1",
+                    UserId = _userManager.GetUserId(User),
                     Body = comment,
                     Score = 0,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
-                    // other properties like UserId, Score can be added here
                 };
 
                 _dbContext.Comments.Add(newComment);
@@ -108,11 +114,46 @@ namespace BlogProject.Controllers
 
         public async Task<IActionResult> UpdateScore(int commentId, int change)
         {
-            string storedProcName = change > 0 ? "IncrementCommentScore" : "DecrementCommentScore";
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Unauthorized();
+            }
 
-            var CommentIdParam = new SqlParameter("@CommentId", commentId);
+            string userId = _userManager.GetUserId(User);
 
-            await _dbContext.Database.ExecuteSqlRawAsync($"EXEC {storedProcName} @CommentId", CommentIdParam);
+            var existingScore = await _dbContext.CommentScores
+                                .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.CommentId == commentId);
+
+            int newVote;
+
+            if (existingScore == null)
+            {
+                newVote = change;
+                await ExecuteVoteChange(change, commentId);
+                _dbContext.CommentScores.Add(new CommentScore
+                {
+                    UserId = userId,
+                    CommentId = commentId,
+                    Vote = change
+                });
+            }
+            else if (existingScore.Vote != change)
+            {
+                // User wants to change their vote.
+                await ExecuteVoteChange(-existingScore.Vote, commentId);  // Undo previous vote
+                await ExecuteVoteChange(change, commentId);  // Apply new vote
+                existingScore.Vote = change;
+                newVote = change;
+            }
+            else
+            {
+                // User wants to retract their vote.
+                await ExecuteVoteChange(-change, commentId);  // Undo previous vote
+                _dbContext.CommentScores.Remove(existingScore);
+                newVote = 0;
+            }
+
+            await _dbContext.SaveChangesAsync();
 
             var updatedComment = await _dbContext.Comments.FindAsync(commentId);
             if (updatedComment == null)
@@ -120,7 +161,19 @@ namespace BlogProject.Controllers
                 return NotFound();
             }
 
-            return Json(new { newScore = updatedComment.Score });
+            return Json(new { newScore = updatedComment.Score, newVote });
+        }
+
+        private async Task ExecuteVoteChange(int change, int commentId)
+        {
+            string storedProcName = change > 0 ? "IncrementCommentScore" : "DecrementCommentScore";
+            await ExecuteStoredProcedure(storedProcName, commentId);
+        }
+
+        private async Task ExecuteStoredProcedure(string procName, int commentId)
+        {
+            var sqlParam = new SqlParameter("@CommentId", commentId);
+            await _dbContext.Database.ExecuteSqlRawAsync($"EXEC {procName} @CommentId", sqlParam);
         }
     }
 }

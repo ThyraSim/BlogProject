@@ -1,14 +1,18 @@
 ﻿@model IEnumerable<BlogProject.ViewModel.PostViewModel>
-
 @{
     ViewData["Title"] = "Index";
 }
 
 <h1>All Posts</h1>
 
-<p>
-    <a asp-action="CreatePost" class="btn btn-primary">Create New</a>
-</p>
+@if (User.Identity.IsAuthenticated)
+{
+    @await Component.InvokeAsync("PostForm")
+}
+else
+{
+    <p>Do you wanna share something? <a href="Identity/Account/Login">Log in</a> to post!</p>
+}
 
 @foreach (var item in Model)
 {
@@ -115,3 +119,6 @@
         color: white;
     }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.1/jquery.validate.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.11/jquery.validate.unobtrusive.min.js"></script>

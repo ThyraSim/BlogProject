@@ -127,7 +127,7 @@ namespace BlogProject.Controllers
         {
             if (User.Identity?.IsAuthenticated != true)
             {
-                return Unauthorized();
+                return new StatusCodeResult(StatusCodes.Status401Unauthorized);
             }
 
             string userId = _userManager.GetUserId(User);

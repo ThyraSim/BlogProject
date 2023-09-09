@@ -79,6 +79,11 @@
             success: function (response) {
                 $('#score-' + postId).text(response.newScore);
                 adjustArrowState(postId, response.newVote, change);
+            },
+            error: function (xhr) {
+                if (xhr.status === 401) { //not logged in
+                    window.location.href = 'Identity/Account/Login';
+                }
             }
         });
     }

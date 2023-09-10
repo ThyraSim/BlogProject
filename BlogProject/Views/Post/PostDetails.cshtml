@@ -4,15 +4,28 @@
     var comments = ViewBag.Comments as List<BlogProject.Models.Comment>;
 }
 
-<div class="card">
+<div class="card data-postid"="@post.Id">
 
     <div class="card-header d-flex justify-content-between">
         <span>@Html.DisplayFor(modelItem => post.User.UserName)</span>
         <span>@post.CreatedAt.ToString("MM/dd/yyyy")</span>
+
+        @if (post.UserId == ViewBag.CurrentUserId)
+        {
+            <div class="dropdown">
+                <button class="btn btn-transparent p-0 border-0 bg-transparent" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                    <li><a class="dropdown-item editPostBtn" href="#">Edit</a></li>
+                    <li><a class="dropdown-item" href="@Url.Action("Delete", new { id = post.Id })">Delete</a></li>
+                </ul>
+            </div>
+        }
     </div>
     <div class="card-body">
-        <h5 class="card-title">@post.Titre</h5>
-        <p class="card-text">@post.Body</p>
+        <h5 class="card-title postTitle">@post.Titre</h5>
+        <p class="card-text postBody">@post.Body</p>
     </div>
     <div class="card-footer d-flex justify-content-between">
         <div class="btn-group w-50">
@@ -148,6 +161,76 @@
     function decreaseScoreComm(commentId) {
         updateCommentScore(commentId, -1);
     }
+
+    $(document).on('click', '.editPostBtn', function (e) {
+        e.preventDefault();
+        const card = $(this).closest('.card');
+        const postId = card.data('postid');
+        const postTitle = card.find('.postTitle').text();
+        const postBody = card.find('.postBody').text();
+
+        const titleInput = $('<input/>')
+            .attr('type', 'text')
+            .attr('name', 'Titre')
+            .addClass('form-control')
+            .val(postTitle);
+        card.find(".postTitle").replaceWith(titleInput)
+
+        const bodyTextarea = $('<textarea></textarea>')
+            .attr('name', 'Body')
+            .addClass('form-control')
+            .val(postBody);
+        card.find('.postBody').replaceWith(bodyTextarea);
+
+        const saveBtn = $('<button></button>')
+            .addClass('btn btn-primary savePostBtn')
+            .text('Save');
+        card.find('.card-body').append(saveBtn);
+    });
+
+    $(document).on('click', '.savePostBtn', function () {
+        const card = $(this).closest('.card');
+        const postId = card.data('postid');
+        const postTitle = card.find('input[name="Titre"]').val();
+        const postBody = card.find('textarea[name="Body"]').val();
+
+        $.ajax({
+            url: '/Post/Edit',
+            type: 'POST',
+            data: {
+                id: postId,
+                Titre: postTitle,
+                Body: postBody,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function (response) {
+                if (response.success) {
+                    // Convert the input back to a title
+                    const titleElement = $('<h5></h5>').addClass('card-title postTitle').text(postTitle);
+                    card.find('input[name="Titre"]').replaceWith(titleElement);
+
+                    // Convert the textarea back to a body
+                    const bodyElement = $('<p></p>').addClass('card-text postBody').text(postBody);
+                    card.find('textarea[name="Body"]').replaceWith(bodyElement);
+
+                    // Remove the save button
+                    card.find('.savePostBtn').remove();
+
+                    // Display the green band
+                    const greenBand = $('<div></div>')
+                        .addClass('edit-successful')
+                        .text(response.message);
+                    card.prepend(greenBand);
+                } else {
+                    // Handle error
+                    alert(response.message);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("Error occurred:", error);
+            }
+        });
+    });
 
 </script>
 

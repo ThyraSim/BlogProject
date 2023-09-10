@@ -38,6 +38,7 @@ namespace BlogProject.Controllers
             var usersDictionary = users.ToDictionary(u => u.Id, u => u);
 
             string currentUserId = _userManager.GetUserId(User);
+            ViewBag.CurrentUserId = currentUserId;
 
             var comments = await _dbContext.Comments
                      .Where(c => postIds.Contains(c.PostId))
@@ -97,6 +98,7 @@ namespace BlogProject.Controllers
             }
 
             string currentUserId = _userManager.GetUserId(User);
+            ViewBag.CurrentUserId = currentUserId;
             var postViewModel = new PostViewModel
             {
                 Post = post,
@@ -108,13 +110,17 @@ namespace BlogProject.Controllers
                 post.User = ConvertToAppUser(identityUser);
             }
 
-            foreach (var comment in post.Comments)
+            if (post.Comments != null)
             {
-                if (usersDictionary.TryGetValue(comment.UserId, out var identityUser1))
+                foreach (var comment in post.Comments)
                 {
-                    comment.User = ConvertToAppUser(identityUser1);
+                    if (usersDictionary.TryGetValue(comment.UserId, out var identityUser1))
+                    {
+                        comment.User = ConvertToAppUser(identityUser1);
+                    }
                 }
             }
+            
 
             ViewBag.PostView = postViewModel;
             ViewBag.Comments = comments;
@@ -131,6 +137,7 @@ namespace BlogProject.Controllers
             }
 
             string userId = _userManager.GetUserId(User);
+
 
             var existingScore = await _dbContext.PostScores
                                 .FirstOrDefaultAsync(ps => ps.UserId == userId && ps.PostId == postId);
@@ -209,7 +216,6 @@ namespace BlogProject.Controllers
                 currentUserID = currentUser.FindFirst(ClaimTypes.NameIdentifier).Value;
             }
 
-
             string Titre = collection["Titre"];
             string Body = collection["Body"];
 
@@ -238,20 +244,37 @@ namespace BlogProject.Controllers
             return View();
         }
 
-        // POST: PostController/Edit/5
+        // POST: PostController/Edit/
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
+        public IActionResult Edit(int id, string Titre, string Body)
         {
             try
             {
-                return RedirectToAction(nameof(Index));
+                var post = _dbContext.Posts.Find(id);
+                if (post == null)
+                {
+                    return NotFound();
+                }
+
+                post.Titre = Titre;
+                post.Body = Body;
+                post.UpdatedAt = DateTime.Now;
+
+                _dbContext.Database.ExecuteSqlRaw("EXEC UpdatePost @p0, @p1, @p2, @p3",
+                                                parameters: new[] { post.Id.ToString(), post.Titre, post.Body, post.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss") });
+
+                _dbContext.SaveChanges();
+
+                // 4. Redirect to the Index view
+                return Json(new { success = true, message = "Edit successful!" });
             }
-            catch
+            catch (Exception ex)
             {
-                return View();
+                return Json(new { success = false, message = "An error occurred!" });
             }
         }
+
 
         // GET: PostController/Delete/5
         public ActionResult Delete(int id)

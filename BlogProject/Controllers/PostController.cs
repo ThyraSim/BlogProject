@@ -277,7 +277,7 @@ namespace BlogProject.Controllers
 
 
         // GET: PostController/Delete/5
-        public ActionResult Delete(int id)
+        public ActionResult Delete()
         {
             return View();
         }
@@ -285,15 +285,16 @@ namespace BlogProject.Controllers
         // POST: PostController/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
+        public async Task<IActionResult> Delete(int id)
         {
             try
             {
-                return RedirectToAction(nameof(Index));
+                _dbContext.Database.ExecuteSqlRaw("EXEC DeletePost @Id", new SqlParameter("@Id", id));  // Assuming '_context' is an instance of DbContext
+                return Json(new { success = true, message = "Post deleted successfully." });
             }
-            catch
+            catch (Exception ex)
             {
-                return View();
+                return Json(new { success = false, message = "Error deleting post: " + ex.Message });
             }
         }
     }

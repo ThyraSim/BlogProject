@@ -31,13 +31,13 @@ namespace BlogProject.Controllers
         // GET: PostController
         public async Task<IActionResult> Index()
         {
+            string currentUserId = _userManager.GetUserId(User);
+
             var posts = await _dbContext.Posts.FromSqlRaw("EXEC GetAllPosts").ToListAsync();
             var postIds = posts.Select(p => p.Id).ToList();
 
             var users = _userManager.Users.ToList();
             var usersDictionary = users.ToDictionary(u => u.Id, u => u);
-
-            string currentUserId = _userManager.GetUserId(User);
 
             var comments = await _dbContext.Comments
                      .Where(c => postIds.Contains(c.PostId))
@@ -82,6 +82,9 @@ namespace BlogProject.Controllers
         // GET: PostController/Details/5
         public async Task<IActionResult> PostDetails(int id)
         {
+            string currentUserId = _userManager.GetUserId(User);
+            ViewBag.CurrentUserId = currentUserId; // needed to adjust the frontend if isAuthor
+
             var posts = await _dbContext.Posts.FromSqlRaw("EXECUTE dbo.GetPostById @Id", new SqlParameter("Id", id)).ToListAsync();
             var post = posts.FirstOrDefault();
 
@@ -96,7 +99,6 @@ namespace BlogProject.Controllers
                 return NotFound($"No post found with ID {id}");
             }
 
-            string currentUserId = _userManager.GetUserId(User);
             var postViewModel = new PostViewModel
             {
                 Post = post,

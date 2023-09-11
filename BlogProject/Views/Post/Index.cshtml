@@ -18,14 +18,27 @@ else
 {
     var post = item.Post;
 
-    <div class="card mb-4">
+    <div class="card mb-4" data-postid="@post.Id">
         <div class="card-header d-flex justify-content-between">
             <span>@Html.DisplayFor(modelItem => post.User.UserName)</span>
             <span>@post.CreatedAt.ToString("MM/dd/yyyy")</span>
+
+            @if (post.UserId == ViewBag.CurrentUserId)
+            {
+                <div class="dropdown">
+                    <button class="btn btn-transparent p-0 border-0 bg-transparent" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <li><a class="dropdown-item editPostBtn" href="#">Edit</a></li>
+                        <li><a class="dropdown-item" href="@Url.Action("Delete", new { id = post.Id })">Delete</a></li>
+                    </ul>
+                </div>
+            }
         </div>
         <div class="card-body">
-            <h5 class="card-title">@Html.DisplayFor(modelItem => post.Titre)</h5>
-            <p class="card-text">@Html.DisplayFor(modelItem => post.Body)</p>
+            <h5 class="card-title postTitle">@Html.DisplayFor(modelItem => post.Titre)</h5>
+            <p class="card-text postBody">@Html.DisplayFor(modelItem => post.Body)</p>
         </div>
         <div class="card-footer d-flex justify-content-between">
             <div class="btn-group w-50">
@@ -115,6 +128,107 @@ else
     }
 
 
+    $(document).on('click', '.editPostBtn', function (e) {
+        e.preventDefault();
+        const card = $(this).closest('.card');
+        const postId = card.data('postid');
+        const postTitle = card.find('.postTitle').text();
+        const postBody = card.find('.postBody').text();
+
+        const titleInput = $('<input/>')
+            .attr('type', 'text')
+            .attr('name', 'Titre')
+            .addClass('form-control')
+            .val(postTitle);
+        card.find(".postTitle").replaceWith(titleInput)
+
+        const bodyTextarea = $('<textarea></textarea>')
+            .attr('name', 'Body')
+            .addClass('form-control')
+            .val(postBody);
+        card.find('.postBody').replaceWith(bodyTextarea);
+
+        const saveBtn = $('<button></button>')
+            .addClass('btn btn-primary savePostBtn')
+            .text('Save');
+        card.find('.card-body').append(saveBtn);
+    });
+
+    $(document).on('click', '.savePostBtn', function () {
+        const card = $(this).closest('.card');
+        const postId = card.data('postid');
+        const postTitle = card.find('input[name="Titre"]').val();
+        const postBody = card.find('textarea[name="Body"]').val();
+
+        $.ajax({
+            url: '@Url.Action("Edit")',
+            type: 'POST',
+            data: {
+                id: postId,
+                Titre: postTitle,
+                Body: postBody,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function (response) {
+                if (response.success) {
+                    // Convert the input back to a title
+                    const titleElement = $('<h5></h5>').addClass('card-title postTitle').text(postTitle);
+                    card.find('input[name="Titre"]').replaceWith(titleElement);
+
+                    // Convert the textarea back to a body
+                    const bodyElement = $('<p></p>').addClass('card-text postBody').text(postBody);
+                    card.find('textarea[name="Body"]').replaceWith(bodyElement);
+
+                    // Remove the save button
+                    card.find('.savePostBtn').remove();
+
+                    // Display the green band
+                    const greenBand = $('<div></div>')
+                        .addClass('edit-successful')
+                        .text(response.message);
+                    card.prepend(greenBand);
+                } else {
+                    // Handle error
+                    alert(response.message);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("Error occurred:", error);
+            }
+        });
+    });
+
+    $(document).on('click', 'a[href^="@Url.Action("Delete")"]', function (e) {
+        e.preventDefault();
+
+        const confirmed = confirm("Are you sure you want to delete this post?");
+        if (!confirmed) {
+            return;
+        }
+
+        const postId = $(this).closest('.card').data('postid');
+
+        $.ajax({
+            url: '@Url.Action("Delete")',
+            type: 'POST',
+            data: {
+                id: postId,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function (response) {
+                if (response.success) {
+                    const card = $('div[data-postid="' + postId + '"]');
+                    card.replaceWith('<div class="edit-successful">' + response.message + '</div>');
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("Error occurred:", error);
+            }
+        });
+    });
+
 </script>
 
 <style>
@@ -122,6 +236,13 @@ else
         background-color: #007BFF;
         color: white;
     }
+
+    .delete-successful {
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+
 </style>
 @*Sans ces scripts, la validation client marche pas*@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>

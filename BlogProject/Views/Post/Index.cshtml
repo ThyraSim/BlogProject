@@ -72,8 +72,10 @@ else
             {
                 <h5>Top Comment:</h5>
                 var topComment = post.Comments.OrderByDescending(c => c.Score).FirstOrDefault(); // Assuming you have a Score property on Comment
-                <div class="mb-2">
-                    <strong>@Html.DisplayFor(modelItem => topComment.User.UserName)</strong>: @Html.DisplayFor(modelItem => topComment.Body)
+
+                <div class="comment" data-comment-id="@topComment.Id">
+                    <strong>@Html.DisplayFor(modelItem => topComment.User.UserName)</strong>:
+                    <span class="comment-text">@Html.DisplayFor(modelItem => topComment.Body)</span>
                 </div>
             }
             else
@@ -124,6 +126,7 @@ else
     function decreaseScore(postId) {
         updateScore(postId, -1);
     }
+
 
     $(document).on('click', '.editPostBtn', function (e) {
         e.preventDefault();
@@ -226,8 +229,6 @@ else
         });
     });
 
-
-
 </script>
 
 <style>
@@ -243,6 +244,7 @@ else
     }
 
 </style>
+@*Sans ces scripts, la validation client marche pas*@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.1/jquery.validate.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.11/jquery.validate.unobtrusive.min.js"></script>

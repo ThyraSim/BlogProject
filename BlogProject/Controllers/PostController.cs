@@ -31,6 +31,8 @@ namespace BlogProject.Controllers
         // GET: PostController
         public async Task<IActionResult> Index()
         {
+            string currentUserId = _userManager.GetUserId(User);
+
             var posts = await _dbContext.Posts.FromSqlRaw("EXEC GetAllPosts").ToListAsync();
             var postIds = posts.Select(p => p.Id).ToList();
 
@@ -83,6 +85,9 @@ namespace BlogProject.Controllers
         // GET: PostController/Details/5
         public async Task<IActionResult> PostDetails(int id)
         {
+            string currentUserId = _userManager.GetUserId(User);
+            ViewBag.CurrentUserId = currentUserId; // needed to adjust the frontend if isAuthor
+
             var posts = await _dbContext.Posts.FromSqlRaw("EXECUTE dbo.GetPostById @Id", new SqlParameter("Id", id)).ToListAsync();
             var post = posts.FirstOrDefault();
 
@@ -99,6 +104,7 @@ namespace BlogProject.Controllers
 
             string currentUserId = _userManager.GetUserId(User);
             ViewBag.CurrentUserId = currentUserId;
+
             var postViewModel = new PostViewModel
             {
                 Post = post,

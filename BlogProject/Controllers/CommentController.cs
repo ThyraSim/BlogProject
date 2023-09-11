@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.Design;
 using System.Data;
+using System.Security.Claims;
 
 namespace BlogProject.Controllers
 {
@@ -78,17 +80,26 @@ namespace BlogProject.Controllers
 
         // POST: CommentController/Edit/5
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
+        //[ValidateAntiForgeryToken] a voir comment ajouter le CSRF sur la requete AJAX
+        public ActionResult Edit(int CommentId, string newText)
         {
-            try
+            var comment = _dbContext.Comments.Find(CommentId);
+            if (comment == null)
             {
-                return RedirectToAction(nameof(Index));
+                return NotFound();
             }
-            catch
+            ClaimsPrincipal currentUser = this.User;
+            var currentUserId = currentUser.FindFirst(ClaimTypes.NameIdentifier).Value;
+
+            if (comment.UserId != currentUserId)
             {
-                return View();
+                return Forbid(); // or return Unauthorized();
             }
+
+            comment.Body = newText;
+            _dbContext.SaveChanges();
+
+            return Ok();
         }
 
         // GET: CommentController/Delete/5

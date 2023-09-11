@@ -214,6 +214,8 @@
             let container = $(this).closest('.comment');
             container.find('.comment-text, .btn-edit').show();
             container.find('.edit-section').hide();
+        });
+    });
 
     $(document).on('click', '.editPostBtn', function (e) {
         e.preventDefault();

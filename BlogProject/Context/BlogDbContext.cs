@@ -16,6 +16,8 @@ namespace BlogProject.Context
         public DbSet<Comment> Comments { get; set; }
         public DbSet<PostScore> PostScores { get; set; }
         public DbSet<CommentScore> CommentScores { get; set; }
+        public DbSet<Community> Communities { get; set; }
+        public DbSet<CommunityPost> CommunityPosts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -25,8 +27,14 @@ namespace BlogProject.Context
             modelBuilder.Entity<CommentScore>()
                 .HasKey(v => new { v.UserId, v.CommentId });
 
+            modelBuilder.Entity<Comment>()
+                .HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<PostScore>()
                 .HasKey(v => new { v.UserId, v.PostId });
+
+            modelBuilder.Entity<CommunityPost>()
+                .HasKey(cp => new {cp.PostId, cp.CommunityId});
         }
     }
 }

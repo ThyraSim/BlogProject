@@ -28,18 +28,18 @@
         <p class="card-text postBody">@post.Body</p>
     </div>
     <div class="card-footer d-flex justify-content-between">
-        <div class="btn-group w-50">
-            <button id="up-arrow-@post.Id" class="btn btn-light @(postView.CurrentUserVote == 1 ? "selected" : "")" onclick="increaseScore(@post.Id)">
+        <div class="btn-group">
+            <button id="up-arrow-@post.Id" class="btn btn-dark @(postView.CurrentUserVote == 1 ? "selected" : "")" onclick="increaseScore(@post.Id)">
                 <i class="fas fa-arrow-up"></i>
             </button>
-            <span id="score-@post.Id" class="btn btn-light disabled">
+            <span id="score-@post.Id" class="btn btn-dark disabled btn-score">
                 @Html.DisplayFor(modelItem => post.Score)
             </span>
-            <button id="down-arrow-@post.Id" class="btn btn-light @(postView.CurrentUserVote == -1 ? "selected" : "")" onclick="decreaseScore(@post.Id)">
+            <button id="down-arrow-@post.Id" class="btn btn-dark @(postView.CurrentUserVote == -1 ? "selected" : "")" onclick="decreaseScore(@post.Id)">
                 <i class="fas fa-arrow-down"></i>
             </button>
         </div>
-        <a class="btn btn-secondary w-50" asp-action="PostDetails" asp-route-id="@post.Id">
+        <a class="btn btn-dark w-50" asp-action="PostDetails" asp-route-id="@post.Id">
             Comments
         </a>
     </div>
@@ -79,13 +79,13 @@
 
                 <!-- Score and Arrows -->
                 <div class="btn-group">
-                    <button id="comment-up-arrow-@comment.Id" class="btn btn-light" onclick="increaseScoreComm(@comment.Id)">
+                    <button id="comment-up-arrow-@comment.Id" class="btn btn-dark" onclick="increaseScoreComm(@comment.Id)">
                         <i class="fas fa-arrow-up"></i>
                     </button>
-                    <span id="comment-score-@comment.Id" class="btn btn-light disabled">
+                    <span id="comment-score-@comment.Id" class="btn btn-dark disabled btn-score">
                         @Html.DisplayFor(modelItem => comment.Score)
                     </span>
-                    <button id="comment-down-arrow-@comment.Id" class="btn btn-light" onclick="decreaseScoreComm(@comment.Id)">
+                    <button id="comment-down-arrow-@comment.Id" class="btn btn-dark" onclick="decreaseScoreComm(@comment.Id)">
                         <i class="fas fa-arrow-down"></i>
                     </button>
                 </div>
@@ -95,13 +95,14 @@
 
     <!-- Comment Input Box -->
     <div class="card-footer">
-        <form asp-controller="Comment" asp-action="Create" asp-route-postId="@post.Id" method="post">
+        <form asp-controller="Comment" asp-action="Create" asp-route-postId="@post.Id" method="post" id="commentForm">
             <div class="input-group">
                 <input type="text" name="comment" class="form-control" placeholder="Leave a comment...">
                 <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="submit">Comment</button>
+                    <button class="btn btn-dark createbtn" type="submit">Comment</button>
                 </div>
             </div>
+            <span class="text-danger" id="commentError" style="display:none;">Comment cannot be empty!</span>
         </form>
     </div>
 
@@ -197,7 +198,8 @@
                 url: "/Comment/Edit",
                 data: {
                     CommentId: commentId,
-                    newText: newText
+                    newText: newText,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
                 },
                 success: function () {
                     container.find('.comment-text').text(newText).show();
@@ -238,7 +240,7 @@
         card.find('.postBody').replaceWith(bodyTextarea);
 
         const saveBtn = $('<button></button>')
-            .addClass('btn btn-primary savePostBtn')
+            .addClass('btn btn-dark createbtn savePostBtn')
             .text('Save');
         card.find('.card-body').append(saveBtn);
     });
@@ -312,6 +314,34 @@
             },
             error: function (xhr, status, error) {
                 console.error("Error occurred:", error);
+            }
+        });
+    });
+
+    $(document).ready(function () {
+        $('.commentForm').on('submit', function (e) {
+            const commentVal = $(this).find('input[name="comment"]').val().trim();
+            const errorSpan = $(this).find('.commentError');
+
+            if (commentVal === "") {
+                e.preventDefault();  // Prevent form submission
+                errorSpan.show();
+            } else {
+                errorSpan.hide();
+            }
+        });
+    });
+
+    $(document).ready(function () {
+        $('#commentError').hide();  // This line is redundant because you already hide it via inline style
+        $('#commentForm').on('submit', function (e) {
+            const commentVal = $('input[name="comment"]').val().trim();
+
+            if (commentVal === "") {
+                e.preventDefault();  // Prevent form submission
+                $('#commentError').show();
+            } else {
+                $('#commentError').hide();
             }
         });
     });

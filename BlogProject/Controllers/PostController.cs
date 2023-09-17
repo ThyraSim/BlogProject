@@ -40,7 +40,6 @@ namespace BlogProject.Controllers
             var users = _userManager.Users.ToList();
             var usersDictionary = users.ToDictionary(u => u.Id, u => u);
 
-
             var comments = await _dbContext.Comments
                      .Where(c => postIds.Contains(c.PostId))
                      .ToListAsync();
@@ -63,7 +62,9 @@ namespace BlogProject.Controllers
                 }
             }
 
-            var postViewModels = posts.Select(p => new PostViewModel
+            var postViewModels = posts
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new PostViewModel
             {
                 Post = p,
                 CurrentUserVote = _dbContext.PostScores.FirstOrDefault(ps => ps.PostId == p.Id && ps.UserId == currentUserId)?.Vote ?? 0
@@ -233,7 +234,8 @@ namespace BlogProject.Controllers
             {
                 UserId = currentUserID,
                 Titre = Titre,
-                Body = Body
+                Body = Body,
+                CreatedAt = DateTime.Now,
             };
 
             _dbContext.Posts.Add(post);
@@ -275,7 +277,7 @@ namespace BlogProject.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "An error occurred!" });
+                return Json(new { success = false, message = ex.Message });
             }
         }
 

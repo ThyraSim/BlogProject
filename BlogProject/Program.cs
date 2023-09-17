@@ -1,11 +1,8 @@
 using BlogProject.Context;
-using BlogProject.Models;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
+using BlogProject.NewFolder;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using System.Data;
 using System.Data.SqlClient;
 
@@ -13,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add configurations
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+builder.Configuration.AddUserSecrets<Program>(); 
 
 // Get connection string
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -23,6 +21,11 @@ builder.Services.AddDbContext<BlogDbContext>(options =>
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<BlogDbContext>();
+
+
+string ApiKey = builder.Configuration["ApiKey"];
+// Register Postmark email sender
+builder.Services.AddSingleton<IEmailSender>(sp => new PostmarkEmailSender(ApiKey));
 
 // Add controllers and views
 builder.Services.AddControllersWithViews();

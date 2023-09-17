@@ -364,3 +364,5 @@ FodyWeavers.xsd
 
 appsettings.json
 /BlogProject/appsettings.json
+/BlogProject/replacements.txt
+/data-export.dacpac

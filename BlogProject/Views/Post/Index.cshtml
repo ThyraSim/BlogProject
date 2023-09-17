@@ -41,37 +41,37 @@ else
             <p class="card-text postBody">@Html.DisplayFor(modelItem => post.Body)</p>
         </div>
         <div class="card-footer d-flex justify-content-between">
-            <div class="btn-group w-50">
-                <button id="up-arrow-@post.Id" class="btn btn-light @(item.CurrentUserVote == 1 ? "selected" : "")" onclick="increaseScore(@post.Id)">
+            <div class="btn-group">
+                <button id="up-arrow-@post.Id" class="btn btn-dark btn-arrow @(item.CurrentUserVote == 1 ? "selected" : "")" onclick="increaseScore(@post.Id)">
                     <i class="fas fa-arrow-up"></i>
                 </button>
-                <span id="score-@post.Id" class="btn btn-light disabled">
+                <span id="score-@post.Id" class="btn btn-dark disabled btn-score">
                     @Html.DisplayFor(modelItem => post.Score)
                 </span>
-                <button id="down-arrow-@post.Id" class="btn btn-light @(item.CurrentUserVote == -1 ? "selected" : "")" onclick="decreaseScore(@post.Id)">
+                <button id="down-arrow-@post.Id" class="btn btn-dark btn-arrow @(item.CurrentUserVote == -1 ? "selected" : "")" onclick="decreaseScore(@post.Id)">
                     <i class="fas fa-arrow-down"></i>
                 </button>
             </div>
-            <a class="btn btn-secondary w-50" asp-action="PostDetails" asp-route-id="@post.Id">
+            <a class="btn btn-dark w-50" asp-action="PostDetails" asp-route-id="@post.Id">
                 Comments
             </a>
         </div>
         <div class="card-footer">
-            <form asp-controller="Comment" asp-action="Create" asp-route-postId="@post.Id" method="post">
+            <form asp-controller="Comment" asp-action="Create" asp-route-postId="@post.Id" method="post" id="commentForm">
                 <div class="input-group">
                     <input type="text" name="comment" class="form-control" placeholder="Leave a comment...">
                     <div class="input-group-append">
-                        <button class="btn btn-outline-secondary" type="submit">Comment</button>
+                        <button class="btn btn-dark createbtn" type="submit">Comment</button>
                     </div>
                 </div>
+                <span class="text-danger" id="commentError">Comment cannot be empty!</span>
             </form>
         </div>
-        <div>
-
+        <div class="comment-container">
             @if (post.Comments != null && post.Comments.Count > 0)
             {
                 <h5>Top Comment:</h5>
-                var topComment = post.Comments.OrderByDescending(c => c.Score).FirstOrDefault(); // Assuming you have a Score property on Comment
+                var topComment = post.Comments.OrderByDescending(c => c.Score).FirstOrDefault();
 
                 <div class="comment" data-comment-id="@topComment.Id">
                     <strong>@Html.DisplayFor(modelItem => topComment.User.UserName)</strong>:
@@ -83,6 +83,7 @@ else
                 <div>No comments yet.</div>
             }
         </div>
+
     </div>
 }
 
@@ -229,13 +230,24 @@ else
         });
     });
 
+    $(document).ready(function () {
+        $('#commentError').hide();  // Initially hide the error message
+
+        $('#commentForm').on('submit', function (e) {
+            const commentVal = $('input[name="comment"]').val().trim();
+
+            if (commentVal === "") {
+                e.preventDefault();  // Prevent form submission
+                $('#commentError').show();
+            } else {
+                $('#commentError').hide();
+            }
+        });
+    });
 </script>
 
 <style>
-    .selected {
-        background-color: #007BFF;
-        color: white;
-    }
+    
 
     .delete-successful {
         padding: 15px;

@@ -39,7 +39,6 @@ namespace BlogProject.Controllers
             var users = _userManager.Users.ToList();
             var usersDictionary = users.ToDictionary(u => u.Id, u => u);
 
-            string currentUserId = _userManager.GetUserId(User);
             ViewBag.CurrentUserId = currentUserId;
 
             var comments = await _dbContext.Comments
@@ -101,9 +100,6 @@ namespace BlogProject.Controllers
             {
                 return NotFound($"No post found with ID {id}");
             }
-
-            string currentUserId = _userManager.GetUserId(User);
-            ViewBag.CurrentUserId = currentUserId;
 
             var postViewModel = new PostViewModel
             {
@@ -303,5 +299,44 @@ namespace BlogProject.Controllers
                 return Json(new { success = false, message = "Error deleting post: " + ex.Message });
             }
         }
+
+        public async Task<IActionResult> userPosts(string userId)
+        {
+            string currentUserId = _userManager.GetUserId(User);
+            ViewBag.CurrentUserId = currentUserId; // needed to adjust the frontend if isAuthor
+
+            // Get posts by user
+            var posts = await _dbContext.Posts.FromSqlRaw("EXECUTE dbo.GetPostsByUser @UserId", new SqlParameter("UserId", userId)).ToListAsync();
+
+            var users = _userManager.Users.ToList();
+            var usersDictionary = users.ToDictionary(u => u.Id, u => u);
+
+            // Map comments for each post
+            foreach (var post in posts)
+            {
+                var comments = await _dbContext.Comments.FromSqlRaw("EXECUTE dbo.GetCommentsByPost @PostId", new SqlParameter("PostId", post.Id)).ToListAsync();
+
+                post.Comments = comments;
+
+                foreach (var comment in post.Comments)
+                {
+                    if (usersDictionary.TryGetValue(comment.UserId, out var identityUser))
+                    {
+                        comment.User = ConvertToAppUser(identityUser);
+                    }
+                }
+            }
+
+            // Create a view model
+            var userPostsViewModel = new UserPostsViewModel
+            {
+                Posts = posts,
+                CurrentUserId = currentUserId
+            };
+
+            return View(userPostsViewModel);
+        }
+
+
     }
 }

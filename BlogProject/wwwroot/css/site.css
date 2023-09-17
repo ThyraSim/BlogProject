@@ -177,3 +177,17 @@ input {
     background-color: gray;
 }
 
+.btn-edit {
+    background-color: #6c757d !important; /* Bootstrap's gray color */
+    border-color: #6c757d !important;
+    color: white !important;
+}
+
+.selected {
+    background-color: #007BFF;
+    color: white;
+}
+
+.btn-save, .btn-cancel {
+    color: white;
+}

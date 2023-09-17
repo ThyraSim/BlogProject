@@ -67,7 +67,7 @@ else
                         <button class="btn btn-dark createbtn" type="submit">Comment</button>
                     </div>
                 </div>
-                <span class="text-danger" id="commentError">Comment cannot be empty!</span>
+                <span class="text-danger" id="commentError" style="display:none;">Comment cannot be empty!</span>
             </form>
         </div>
         <div class="comment-container">
@@ -86,7 +86,6 @@ else
                 <div>No comments yet.</div>
             }
         </div>
-
     </div>
 }
 
@@ -153,7 +152,7 @@ else
         card.find('.postBody').replaceWith(bodyTextarea);
 
         const saveBtn = $('<button></button>')
-            .addClass('btn btn-primary savePostBtn')
+            .addClass('btn btn-dark createbtn savePostBtn')
             .text('Save');
         card.find('.card-body').append(saveBtn);
     });
@@ -234,8 +233,21 @@ else
     });
 
     $(document).ready(function () {
-        $('#commentError').hide();  // Initially hide the error message
+        $('.commentForm').on('submit', function (e) {
+            const commentVal = $(this).find('input[name="comment"]').val().trim();
+            const errorSpan = $(this).find('.commentError');
 
+            if (commentVal === "") {
+                e.preventDefault();  // Prevent form submission
+                errorSpan.show();
+            } else {
+                errorSpan.hide();
+            }
+        });
+    });
+
+    $(document).ready(function () {
+        $('#commentError').hide();  // This line is redundant because you already hide it via inline style
         $('#commentForm').on('submit', function (e) {
             const commentVal = $('input[name="comment"]').val().trim();
 
@@ -247,6 +259,8 @@ else
             }
         });
     });
+
+
 </script>
 
 <style>

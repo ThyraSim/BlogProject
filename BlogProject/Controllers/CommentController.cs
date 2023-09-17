@@ -80,7 +80,7 @@ namespace BlogProject.Controllers
 
         // POST: CommentController/Edit/5
         [HttpPost]
-        //[ValidateAntiForgeryToken] a voir comment ajouter le CSRF sur la requete AJAX
+        [ValidateAntiForgeryToken]  
         public ActionResult Edit(int CommentId, string newText)
         {
             var comment = _dbContext.Comments.Find(CommentId);

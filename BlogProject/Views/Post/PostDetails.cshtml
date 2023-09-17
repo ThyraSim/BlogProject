@@ -197,7 +197,8 @@
                 url: "/Comment/Edit",
                 data: {
                     CommentId: commentId,
-                    newText: newText
+                    newText: newText,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
                 },
                 success: function () {
                     container.find('.comment-text').text(newText).show();

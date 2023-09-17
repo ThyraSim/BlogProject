@@ -63,7 +63,9 @@ namespace BlogProject.Controllers
                 }
             }
 
-            var postViewModels = posts.Select(p => new PostViewModel
+            var postViewModels = posts
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new PostViewModel
             {
                 Post = p,
                 CurrentUserVote = _dbContext.PostScores.FirstOrDefault(ps => ps.PostId == p.Id && ps.UserId == currentUserId)?.Vote ?? 0
@@ -233,7 +235,8 @@ namespace BlogProject.Controllers
             {
                 UserId = currentUserID,
                 Titre = Titre,
-                Body = Body
+                Body = Body,
+                CreatedAt = DateTime.Now,
             };
 
             _dbContext.Posts.Add(post);
@@ -275,7 +278,7 @@ namespace BlogProject.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "An error occurred!" });
+                return Json(new { success = false, message = ex.Message });
             }
         }
 

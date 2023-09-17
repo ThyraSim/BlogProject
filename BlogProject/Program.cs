@@ -1,8 +1,10 @@
 using BlogProject.Context;
 using BlogProject.Models;
+using BlogProject.NewFolder;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,6 +25,9 @@ builder.Services.AddDbContext<BlogDbContext>(options =>
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<BlogDbContext>();
+
+// Register Postmark email sender
+builder.Services.AddSingleton<IEmailSender>(sp => new PostmarkEmailSender("2cc86aa1-cdc2-4f7a-9caa-51579c889084"));
 
 // Add controllers and views
 builder.Services.AddControllersWithViews();

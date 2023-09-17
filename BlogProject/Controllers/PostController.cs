@@ -32,6 +32,7 @@ namespace BlogProject.Controllers
         public async Task<IActionResult> Index()
         {
             string currentUserId = _userManager.GetUserId(User);
+            ViewBag.CurrentUserId = currentUserId;
 
             var posts = await _dbContext.Posts.FromSqlRaw("EXEC GetAllPosts").ToListAsync();
             var postIds = posts.Select(p => p.Id).ToList();
@@ -39,6 +40,7 @@ namespace BlogProject.Controllers
             var users = _userManager.Users.ToList();
             var usersDictionary = users.ToDictionary(u => u.Id, u => u);
 
+            string currentUserId = _userManager.GetUserId(User);
             ViewBag.CurrentUserId = currentUserId;
 
             var comments = await _dbContext.Comments
@@ -63,7 +65,9 @@ namespace BlogProject.Controllers
                 }
             }
 
-            var postViewModels = posts.Select(p => new PostViewModel
+            var postViewModels = posts
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new PostViewModel
             {
                 Post = p,
                 CurrentUserVote = _dbContext.PostScores.FirstOrDefault(ps => ps.PostId == p.Id && ps.UserId == currentUserId)?.Vote ?? 0
@@ -99,7 +103,7 @@ namespace BlogProject.Controllers
             if (post == null)
             {
                 return NotFound($"No post found with ID {id}");
-            }
+
 
             var postViewModel = new PostViewModel
             {
@@ -231,7 +235,8 @@ namespace BlogProject.Controllers
             {
                 UserId = currentUserID,
                 Titre = Titre,
-                Body = Body
+                Body = Body,
+                CreatedAt = DateTime.Now,
             };
 
             _dbContext.Posts.Add(post);
@@ -273,7 +278,7 @@ namespace BlogProject.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "An error occurred!" });
+                return Json(new { success = false, message = ex.Message });
             }
         }
 

@@ -20,8 +20,11 @@ else
 
     <div class="card mb-4" data-postid="@post.Id">
         <div class="card-header d-flex justify-content-between">
-            <span>@Html.DisplayFor(modelItem => post.User.UserName)</span>
-            <span>@post.CreatedAt.ToString("MM/dd/yyyy")</span>
+            <span>
+                @Html.DisplayFor(modelItem => post.User.UserName) //
+                @post.CreatedAt.ToString("MM/dd/yyyy HH:mm:ss")
+            </span>
+
 
             @if (post.UserId == ViewBag.CurrentUserId)
             {
